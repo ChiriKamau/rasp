@@ -3,9 +3,13 @@ import firebase_admin
 from firebase_admin import credentials, storage, auth
 import datetime
 import time
+import os  # Import os module for path operations
+
+# Determine absolute path to firebase-adminsdk.json
+ABSOLUTE_PATH = '/home/lima/Documents/firebase-adminsdk.json'  # Replace with your actual absolute path
 
 # Initialize Firebase Admin SDK
-cred = credentials.Certificate("firebase-adminsdk.json")
+cred = credentials.Certificate(ABSOLUTE_PATH)
 firebase_admin.initialize_app(cred, {
     'storageBucket': 'espcam-69f58.appspot.com'
 })
@@ -62,7 +66,7 @@ if __name__ == "__main__":
     if uid:
         print(f"User found. UID: {uid}")
         
-        # Loop to capture an image and upload it to Firebase every minute
+        # Loop to capture an image and upload it to Firebase every 4 minutes (240 seconds)
         while True:
             take_and_upload_image(uid)
             time.sleep(240)
