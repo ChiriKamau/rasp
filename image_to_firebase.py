@@ -4,6 +4,8 @@ from firebase_admin import credentials, storage, auth
 import datetime
 import time
 import os
+from wifi import Cell, Scheme
+import subprocess
 
 # Determine absolute path to firebase-adminsdk.json
 ABSOLUTE_PATH = '/home/lima/Documents/firebase-adminsdk.json'  # Replace with your actual absolute path
@@ -13,6 +15,40 @@ cred = credentials.Certificate(ABSOLUTE_PATH)
 firebase_admin.initialize_app(cred, {
     'storageBucket': 'espcam-69f58.appspot.com'
 })
+
+def connect_to_wifi(wifi_list):
+    for ssid, password in wifi_list:
+        try:
+            print(f"Attempting to connect to {ssid}...")
+            # Scan for available networks
+            cells = Cell.all('wlan0')
+            
+            # Find the desired network
+            target_network = next((cell for cell in cells if cell.ssid == ssid), None)
+            
+            if target_network is None:
+                print(f"Network '{ssid}' not found.")
+                continue
+            
+            # Create a scheme for the network
+            scheme = Scheme.for_cell('wlan0', ssid, target_network, password)
+            scheme.save()
+            
+            # Attempt to connect
+            scheme.activate()
+            
+            # Check if connection was successful
+            result = subprocess.run(['iwconfig', 'wlan0'], capture_output=True, text=True)
+            if ssid in result.stdout:
+                print(f"Successfully connected to {ssid}")
+                return True
+            else:
+                print(f"Failed to connect to {ssid}")
+        except Exception as e:
+            print(f"Error connecting to {ssid}: {e}")
+    
+    print("Failed to connect to any WiFi network.")
+    return False
 
 def get_uid_from_email(email):
     try:
@@ -68,16 +104,25 @@ def take_and_upload_image(uid):
 
 # Main execution
 if __name__ == "__main__":
-    email = "green.74house@gmail.com"
-    password = "@greenh74"  # Note: This password is not used in the authentication process
+    wifi_list = [
+        ("Electrical", "electrical001"),
+        ("chiri", "12345678"),
+        ("router", "123456789")
+    ]
     
-    uid = get_uid_from_email(email)
-    if uid:
-        print(f"User found. UID: {uid}")
+    if connect_to_wifi(wifi_list):
+        email = "green.74house@gmail.com"
+        password = "@greenh74"  # Note: This password is not used in the authentication process
         
-        # Loop to capture an image and upload it to Firebase every 4 minutes (240 seconds)
-        while True:
-            take_and_upload_image(uid)
-            time.sleep(240)
+        uid = get_uid_from_email(email)
+        if uid:
+            print(f"User found. UID: {uid}")
+            
+            # Loop to capture an image and upload it to Firebase every 4 minutes (240 seconds)
+            while True:
+                take_and_upload_image(uid)
+                time.sleep(240)
+        else:
+            print("User not found. Exiting.")
     else:
-        print("User not found. Exiting.")
+        print("Failed to connect to any WiFi network. Exiting.")
